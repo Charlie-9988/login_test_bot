@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="260" viewBox="0 0 900 260" role="img" aria-label="Login Test Bot">
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="260" viewBox="0 0 900 260" role="img" aria-label="ESBG Login Test Bot">
+  <title>ESBG Login Test Bot</title>
+  <desc>ESBG Login Test Bot: four ways to log in to Telegram, with a typewriter console animation (pure SVG SMIL, no JavaScript).</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#0b1220"/>
@@ -8,12 +10,36 @@
       <stop offset="0" stop-color="#38bdf8"/>
       <stop offset="1" stop-color="#22d3a6"/>
     </linearGradient>
+    <!-- typewriter reveals: the clip width grows while the line is being typed -->
+    <clipPath id="tl1">
+      <rect x="106" y="143" height="20" width="0">
+        <animate attributeName="width" dur="12s" repeatCount="indefinite" calcMode="linear"
+                 values="0;0;126;126;0;0" keyTimes="0;0.02;0.10;0.88;0.90;1"/>
+      </rect>
+    </clipPath>
+    <clipPath id="tl2">
+      <rect x="88" y="171" height="20" width="0">
+        <animate attributeName="width" dur="12s" repeatCount="indefinite" calcMode="linear"
+                 values="0;0;234;234;0;0" keyTimes="0;0.175;0.30;0.90;0.92;1"/>
+      </rect>
+    </clipPath>
+    <clipPath id="tl3">
+      <rect x="88" y="199" height="20" width="0">
+        <animate attributeName="width" dur="12s" repeatCount="indefinite" calcMode="linear"
+                 values="0;0;279;279;0;0" keyTimes="0;0.375;0.53;0.92;0.94;1"/>
+      </rect>
+    </clipPath>
   </defs>
+
   <rect width="900" height="260" rx="18" fill="url(#bg)"/>
   <rect x="1" y="1" width="898" height="258" rx="17" fill="none" stroke="#243b63" stroke-width="2"/>
+
+  <!-- window dots -->
   <circle cx="34" cy="32" r="6" fill="#ff5f57"/>
   <circle cx="56" cy="32" r="6" fill="#febc2e"/>
   <circle cx="78" cy="32" r="6" fill="#28c840"/>
+
+  <!-- blinking ONLINE indicator -->
   <g font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="600" fill="#9fb3d1">
     <circle cx="772" cy="32" r="6" fill="#22d3a6">
       <animate attributeName="opacity" values="1;0.1;1" dur="1.4s" repeatCount="indefinite"/>
@@ -24,32 +50,52 @@
     </circle>
     <text x="788" y="37">ONLINE</text>
   </g>
-  <g transform="translate(70,98)">
-    <rect x="0" y="22" width="64" height="52" rx="10" fill="none" stroke="url(#accent)" stroke-width="5"/>
-    <path d="M14 22 v-10 a18 18 0 0 1 36 0 v10" fill="none" stroke="url(#accent)" stroke-width="5" stroke-linecap="round"/>
-    <circle cx="32" cy="46" r="6" fill="#38bdf8">
-      <animate attributeName="opacity" values="1;0.2;1" dur="1.4s" repeatCount="indefinite"/>
-    </circle>
-    <rect x="29" y="50" width="6" height="12" rx="3" fill="#38bdf8"/>
-  </g>
+
+  <!-- brand -->
   <g font-family="'Segoe UI', Arial, sans-serif">
-    <text x="170" y="130" font-size="46" font-weight="800" fill="#ffffff" textLength="400" lengthAdjust="spacingAndGlyphs">LOGIN TEST BOT</text>
-    <rect x="582" y="95" width="5" height="44" fill="#22d3a6">
-      <animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.5;0.5;1;1" dur="1.1s" repeatCount="indefinite"/>
-    </rect>
-    <text x="170" y="166" font-size="19" fill="#9fb3d1">Telegram authentication diagnostics &#183; OTP &#183; Session strings</text>
+    <text x="66" y="98" font-size="58" font-weight="800" fill="url(#accent)" letter-spacing="2">ESBG</text>
+    <text x="252" y="78" font-size="21" font-weight="700" fill="#ffffff" letter-spacing="4">LOGIN TEST BOT</text>
+    <text x="252" y="102" font-size="13.5" fill="#9fb3d1">Telegram login diagnostics &#183; four ways in</text>
   </g>
-  <g font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="600">
-    <rect x="170" y="192" width="118" height="32" rx="16" fill="#12304f" stroke="#38bdf8"/>
-    <text x="229" y="213" text-anchor="middle" fill="#7dd3fc">Phone + OTP</text>
-    <rect x="300" y="192" width="132" height="32" rx="16" fill="#12304f" stroke="#38bdf8"/>
-    <text x="366" y="213" text-anchor="middle" fill="#7dd3fc">API ID / Hash</text>
-    <rect x="444" y="192" width="150" height="32" rx="16" fill="#12304f" stroke="#38bdf8"/>
-    <text x="519" y="213" text-anchor="middle" fill="#7dd3fc">Generate Session</text>
-    <rect x="606" y="192" width="134" height="32" rx="16" fill="#12304f" stroke="#38bdf8"/>
-    <text x="673" y="213" text-anchor="middle" fill="#7dd3fc">Paste Session</text>
+
+  <!-- console -->
+  <rect x="68" y="124" width="460" height="112" rx="10" fill="#0a0f1c" stroke="#243b63"/>
+  <text x="88" y="158" font-family="ui-monospace, 'Cascadia Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace"
+        font-size="15" fill="#22d3a6">$</text>
+
+  <!-- typed lines (each revealed by its clip, textLength fixes the exact width) -->
+  <g font-family="ui-monospace, 'Cascadia Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" fill="#e8eef7">
+    <g clip-path="url(#tl1)">
+      <text x="106" y="158" textLength="126" lengthAdjust="spacing">python main.py</text>
+    </g>
+    <g clip-path="url(#tl2)">
+      <text x="88" y="186" textLength="234" lengthAdjust="spacing">ESBG login test bot online</text>
+    </g>
+    <g clip-path="url(#tl3)">
+      <text x="88" y="214" textLength="279" lengthAdjust="spacing">otp / api key / session / paste</text>
+    </g>
   </g>
-  <rect x="0" y="244" width="900" height="3" fill="url(#accent)" opacity="0.5">
-    <animate attributeName="opacity" values="0.15;0.8;0.15" dur="2.4s" repeatCount="indefinite"/>
+
+  <!-- cursor: follows the typing edge, sits at the end of the typed text, blinks -->
+  <rect width="9" height="17" fill="#22d3a6">
+    <animate attributeName="x" dur="12s" repeatCount="indefinite" calcMode="linear"
+             values="106;232;232;88;322;322;88;367;367;88;88"
+             keyTimes="0;0.10;0.16;0.175;0.30;0.36;0.375;0.53;0.88;0.94;1"/>
+    <animate attributeName="y" dur="12s" repeatCount="indefinite" calcMode="discrete"
+             values="145;173;201;145" keyTimes="0;0.175;0.375;0.94"/>
+    <animate attributeName="opacity" values="1;0" keyTimes="0;0.5" calcMode="discrete"
+             dur="1.1s" repeatCount="indefinite"/>
   </rect>
+
+  <!-- method pills -->
+  <g font-family="ui-monospace, 'Cascadia Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" fill="#7dd3fc">
+    <rect x="548" y="128" width="284" height="26" rx="13" fill="#12304f" stroke="#38bdf8"/>
+    <text x="690" y="146" text-anchor="middle">Phone + OTP</text>
+    <rect x="548" y="160" width="284" height="26" rx="13" fill="#12304f" stroke="#38bdf8"/>
+    <text x="690" y="178" text-anchor="middle">API ID / API Hash</text>
+    <rect x="548" y="192" width="284" height="26" rx="13" fill="#12304f" stroke="#38bdf8"/>
+    <text x="690" y="210" text-anchor="middle">Generate Session</text>
+    <rect x="548" y="224" width="284" height="26" rx="13" fill="#12304f" stroke="#22d3a6"/>
+    <text x="690" y="242" text-anchor="middle">Paste Session</text>
+  </g>
 </svg>
