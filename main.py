@@ -1,4 +1,8 @@
-"""LOGIN TEST BOT - only the login: phone number -> code -> (2-step password) -> session string.
+"""LOGIN TEST BOT - only the login. Four ways in (menu on /start):
+    1) Phone + OTP            : the bot's own API ID / Hash (environment) -> code -> (2-step password)
+    2) API ID / API Hash      : your own key typed in the chat -> phone -> code -> (2-step password)
+    3) Generate Session       : like 1), but the result is only a session string
+    4) Paste Session          : paste a ready session string (made elsewhere): checked, no code needed
 
 Purpose: find out why the login code does not arrive. It does nothing else, so the library can be changed in
 requirements.txt (one line) and the result compared. Every step is written to the log.
@@ -98,6 +102,15 @@ def log_err(step, uid, e):
                 getattr(e, "ID", "-"), str(e)[:300] or "-", exc_info=True)
 
 
+def err_text_api(e, api):
+    """err_text, with a clear line when a typed API ID / Hash is the reason."""
+    if type(e).__name__ == "ApiIdInvalid":
+        return "❌ Telegram rejected the API ID / API Hash (ApiIdInvalid). Check them at my.telegram.org."
+    if type(e).__name__ == "ApiIdPublishedFlood":
+        return "❌ This API ID is blocked (ApiIdPublishedFlood). Make your own at my.telegram.org."
+    return err_text(e)
+
+
 def keypad(lg):
     nxt = lg.get("next") or ""
     names = {"SMS": "Send by SMS", "CALL": "Call me", "FLASH_CALL": "Missed call", "MISSED_CALL": "Missed call",
@@ -144,16 +157,27 @@ async def reset(uid):
         await quiet_disconnect(lg["client"])
 
 
+def menu_markup():
+    return Markup([[Btn("📱 Phone + OTP", "m|ph")],
+                   [Btn("🔑 API ID / API Hash", "m|own")],
+                   [Btn("🧬 Generate Session", "m|gen")],
+                   [Btn("📋 Paste Session", "m|paste")]])
+
+
 @bot.on_message(filters.private & filters.command(["start", "login"]))
 async def start_cmd(c, m):
     uid = m.from_user.id
     await reset(uid)
-    STATE[uid] = {"step": "phone", "ts": time.time()}
     log.info("login-test: /start uid=%s library=%s python=%s", uid, LIB, platform.python_version())
     await m.reply_text(
         "🧪 <b>LOGIN TEST</b>\n"
         f"Library: <code>{LIB}</code>\nPython: <code>{platform.python_version()}</code>\n\n"
-        "Send your phone number with the country code, e.g. <code>+919876543210</code>.\n/cancel to stop.")
+        "Choose how to log in:\n\n"
+        "📱 <b>Phone + OTP</b> - your number, then the code (the bot's API key).\n"
+        "🔑 <b>API ID / API Hash</b> - your own key from my.telegram.org, then your number and the code.\n"
+        "🧬 <b>Generate Session</b> - log in once and get a session string.\n"
+        "📋 <b>Paste Session</b> - you already have a session string: paste it, no code needed.\n\n/cancel to stop.",
+        reply_markup=menu_markup())
 
 
 @bot.on_message(filters.private & filters.command("cancel"))
@@ -162,10 +186,12 @@ async def cancel_cmd(c, m):
     await m.reply_text("✅ Cancelled. /start to begin again.")
 
 
-async def open_login(phone):
+async def open_login(phone, api=None):
+    """api = (api_id, api_hash) typed by the user, or None for the bot's own key."""
     last = None
+    aid, ahash = api if api else (API_ID, API_HASH)
     for attempt in (1, 2):
-        lc = Client(f"lt_{int(time.time() * 1000)}", api_id=API_ID, api_hash=API_HASH, in_memory=True)
+        lc = Client(f"lt_{int(time.time() * 1000)}", api_id=aid, api_hash=ahash, in_memory=True)
         try:
             await asyncio.wait_for(lc.connect(), CONNECT_TIMEOUT)
             sent = await asyncio.wait_for(lc.send_code(phone), STEP_TIMEOUT)
@@ -189,24 +215,28 @@ async def do_phone(m, uid):
         pass
     if not re.fullmatch(r"\+[0-9]{6,15}", phone):
         return await bot.send_message(uid, "❌ Send a valid number with country code, e.g. <code>+919876543210</code>.")
+    st0 = STATE.get(uid) or {}
+    api = (st0["api_id"], st0["api_hash"]) if st0.get("api_hash") else None
+    mode = st0.get("mode", "login")
     async with lock(uid):
         wait = await bot.send_message(uid, "⏳ Asking Telegram for your code…")
-        log.info("login: asking Telegram for a code uid=%s library=%s", uid, LIB)
+        log.info("login: asking Telegram for a code uid=%s library=%s key=%s mode=%s", uid, LIB,
+                 "own" if api else "bot", mode)
         try:
-            lc, sent = await open_login(phone)
+            lc, sent = await open_login(phone, api)
         except Exception as e:
             log_err("send_code", uid, e)
-            return await bot.send_message(uid, err_text(e))
+            return await bot.send_message(uid, err_text_api(e, api))
         finally:
             try:
                 await wait.delete()
             except Exception:
                 pass
-        log.info("login: code requested uid=%s library=%s delivery=%s next=%s timeout=%s", uid, LIB,
-                 enum_name(getattr(sent, "type", None)), enum_name(getattr(sent, "next_type", None)),
-                 getattr(sent, "timeout", None))
-        LOGIN[uid] = {"client": lc, "phone": phone, "hash": sent.phone_code_hash,
-                      "next": enum_name(getattr(sent, "next_type", None)), "where": where_text(sent),
+        log.info("login: code requested uid=%s library=%s key=%s delivery=%s next=%s timeout=%s", uid, LIB,
+                 "own" if api else "bot", enum_name(getattr(sent, "type", None)),
+                 enum_name(getattr(sent, "next_type", None)), getattr(sent, "timeout", None))
+        LOGIN[uid] = {"client": lc, "phone": phone, "hash": sent.phone_code_hash, "mode": mode,
+                      "api": api, "next": enum_name(getattr(sent, "next_type", None)), "where": where_text(sent),
                       "tries": 0, "rs_ts": 0.0}
         STATE[uid] = {"step": "code", "digits": "", "ts": time.time()}
         await show_code_screen(uid)
@@ -216,11 +246,83 @@ async def finish(uid, lg, note_prefix=""):
     c = lg["client"]
     me = await c.get_me()
     string = await c.export_session_string()
-    log.info("login: SUCCESS uid=%s account=%s", uid, getattr(me, "id", "?"))
+    log.info("login: SUCCESS uid=%s account=%s mode=%s", uid, getattr(me, "id", "?"), lg.get("mode"))
     await reset(uid)
+    head = "🧬 <b>SESSION GENERATED</b>" if lg.get("mode") == "generate" else "✅ <b>LOGIN WORKED</b>"
     await bot.send_message(
-        uid, f"✅ <b>LOGIN WORKED</b> ({LIB})\nAccount: {me.first_name}\n\n"
-             f"Session string (the key to your account - keep it secret, delete this message):\n\n<code>{string}</code>")
+        uid, f"{head} ({LIB})\nAccount: {me.first_name}\n\n"
+             f"Session string (the key to your account - keep it secret, delete this message):\n\n<code>{string}</code>\n\n"
+             "You can test it with 📋 Paste Session in /start.")
+
+
+SESSION_RE = re.compile(r"[A-Za-z0-9_\-=]{120,}")      # a session string (URL-safe base64)
+
+
+async def do_paste(m, uid):
+    """📋 a ready session string: it is started (no code), asked who it is, and closed again."""
+    txt = (m.text or "").strip()
+    try:
+        await m.delete()                                   # keep the string out of the chat
+    except Exception:
+        pass
+    st = STATE.get(uid) or {}
+    if not SESSION_RE.fullmatch(txt):
+        st["tries"] = st.get("tries", 0) + 1
+        if st["tries"] >= 5:
+            STATE.pop(uid, None)
+            return await bot.send_message(uid, "❌ Too many tries. /start again.")
+        return await bot.send_message(uid, "❌ That does not look like a session string. Paste the whole string, or /cancel.")
+    async with lock(uid):
+        status = await bot.send_message(uid, "⏳ Checking the session…")
+        chk = Client(f"chk_{uid}_{int(time.time())}", api_id=API_ID, api_hash=API_HASH, session_string=txt, in_memory=True)
+        try:
+            await asyncio.wait_for(chk.start(), CONNECT_TIMEOUT)
+            me = await asyncio.wait_for(chk.get_me(), STEP_TIMEOUT)
+        except Exception as e:
+            log_err("paste_session", uid, e)
+            return await bot.send_message(uid, "❌ This string could not be used.\n" + err_text(e) +
+                                          "\n\nPaste it again, or /cancel.")
+        finally:
+            try:
+                await status.delete()
+            except Exception:
+                pass
+            try:
+                await chk.stop()
+            except Exception:
+                pass
+        if getattr(me, "is_bot", False):
+            return await bot.send_message(uid, "❌ That is a bot session. Paste the session of your own account.")
+        log.info("login: SESSION PASTE OK uid=%s account=%s library=%s", uid, getattr(me, "id", "?"), LIB)
+        STATE.pop(uid, None)
+        await bot.send_message(uid, f"✅ <b>SESSION WORKS</b> ({LIB})\nAccount: {me.first_name} "
+                                    f"(@{getattr(me, 'username', None) or '-'})\n\nYou can delete the message that showed the string.")
+
+
+async def do_api_id(m, uid):
+    txt = (m.text or "").strip()
+    try:
+        await m.delete()
+    except Exception:
+        pass
+    if not txt.isdigit() or not 4 <= len(txt) <= 12:
+        return await bot.send_message(uid, "❌ The API ID is a number (about 7-8 digits). Send it again, or /cancel.")
+    STATE[uid] = {"step": "api_hash", "api_id": int(txt), "ts": time.time()}
+    await bot.send_message(uid, "🔑 Now send your <b>API Hash</b> (32 letters and digits).")
+
+
+async def do_api_hash(m, uid):
+    txt = (m.text or "").strip()
+    try:
+        await m.delete()                                   # keep the hash out of the chat
+    except Exception:
+        pass
+    if not re.fullmatch(r"[0-9a-fA-F]{32}", txt):
+        return await bot.send_message(uid, "❌ The API Hash is 32 letters and digits. Send it again, or /cancel.")
+    st = STATE.get(uid) or {}
+    STATE[uid] = {"step": "phone", "api_id": st.get("api_id"), "api_hash": txt.lower(), "mode": "login", "ts": time.time()}
+    await bot.send_message(uid, "✅ Key saved for this login.\n\nNow send your phone number with the country code, "
+                                "e.g. <code>+919876543210</code>.")
 
 
 async def submit_code(uid, code):
@@ -288,9 +390,15 @@ async def text_router(c, m):
     uid = m.from_user.id
     st = STATE.get(uid)
     if not st:
-        return await m.reply_text("Send /start to begin the login test.")
+        return await m.reply_text("Send /start to choose a login way.")
     if st["step"] == "phone":
         return await do_phone(m, uid)
+    if st["step"] == "api_id":
+        return await do_api_id(m, uid)
+    if st["step"] == "api_hash":
+        return await do_api_hash(m, uid)
+    if st["step"] == "paste":
+        return await do_paste(m, uid)
     if st["step"] == "password":
         return await submit_password(m, uid)
     if st["step"] == "code":
@@ -315,6 +423,27 @@ async def callbacks(c, q):
     if data == "cx":
         await reset(uid)
         return await q.message.reply_text("✅ Cancelled. /start to begin again.")
+    if data.startswith("m|"):                               # the four ways in
+        way = data[2:]
+        await reset(uid)
+        if way in ("ph", "gen"):
+            STATE[uid] = {"step": "phone", "mode": "generate" if way == "gen" else "login", "ts": time.time()}
+            return await q.message.reply_text(
+                ("🧬 <b>GENERATE SESSION</b>\nI log in once and give you a session string.\n\n" if way == "gen"
+                 else "📱 <b>PHONE + OTP</b>\n\n") +
+                "Send your phone number with the country code, e.g. <code>+919876543210</code>.\n/cancel to stop.")
+        if way == "own":
+            STATE[uid] = {"step": "api_id", "ts": time.time()}
+            return await q.message.reply_text(
+                "🔑 <b>YOUR OWN API KEY</b>\nGet it free at my.telegram.org -> API development tools.\n\n"
+                "Step 1 of 3 - send your <b>API ID</b> (numbers).\n/cancel to stop.")
+        if way == "paste":
+            STATE[uid] = {"step": "paste", "tries": 0, "ts": time.time()}
+            return await q.message.reply_text(
+                "📋 <b>PASTE SESSION</b>\nPaste the whole session string of your own account as one message. I delete your "
+                "message at once and only check that it works.\n\n⚠️ It is the key to your account: never share it.\n"
+                "/cancel to stop.")
+        return
     if not st or not lg or st.get("step") != "code":
         return await q.message.reply_text("⌛ This screen is old. /start again.")
     if data.startswith("d|"):
