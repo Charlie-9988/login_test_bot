@@ -1,152 +1,117 @@
 <div align="center">
 
-<img src="assets/banner.svg" alt="ESBG Login Test Bot" width="100%"/>
+<img src="assets/banner.svg" alt="Login Bot" width="100%"/>
 
-<br/>
+# Login Bot
 
-# ESBG Login Test Bot
-
-**A focused Telegram login bot by ESBG. It does one thing only: log in, and show exactly how Telegram delivers the code.**
+**Sign in to a Telegram account and see exactly how the login code is delivered.**
 
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Telegram](https://img.shields.io/badge/Telegram-MTProto-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)
 ![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white)
 ![Render](https://img.shields.io/badge/Deploy-Render-46E3B7?style=for-the-badge&logo=render&logoColor=black)
 ![Status](https://img.shields.io/badge/Status-Active-22D3A6?style=for-the-badge)
-![ESBG](https://img.shields.io/badge/made_by-ESBG-6D28D9?style=for-the-badge)
+![by ESBG](https://img.shields.io/badge/by-ESBG-8B5CF6?style=for-the-badge)
+
+[Overview](#overview) · [Features](#features) · [How It Works](#how-it-works) · [Bot Preview](#bot-preview) · [Photo Rotation](#photo-rotation) · [Login Methods](#login-methods) · [Bot Commands](#bot-commands)
+
+[Quick Start](#quick-start) · [Environment Variables](#environment-variables) · [Deployment](#deployment) · [Choosing the Library](#choosing-the-library) · [Reading the Logs](#reading-the-logs) · [Troubleshooting](#troubleshooting) · [FAQ](#faq) · [Security Guidelines](#security-guidelines) · [Credits](#credits)
 
 </div>
 
 ---
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [How It Works](#how-it-works)
-- [Bot Preview](#bot-preview)
-- [Login Methods](#login-methods)
-  - [1. Phone + OTP](#1-phone--otp)
-  - [2. API ID / API Hash](#2-api-id--api-hash)
-  - [3. Generate Session](#3-generate-session)
-  - [4. Paste Session](#4-paste-session)
-- [Bot Commands](#bot-commands)
-- [Quick Start](#quick-start)
-- [Environment Variables](#environment-variables)
-- [Deployment](#deployment)
-  - [Railway](#railway)
-  - [Render](#render)
-- [Choosing the Library](#choosing-the-library)
-- [Reading the Logs](#reading-the-logs)
-- [Troubleshooting](#troubleshooting)
-- [FAQ](#faq)
-- [Security Guidelines](#security-guidelines)
-- [Project Structure](#project-structure)
-- [Credits](#credits)
-
----
-
 ## Overview
 
-**ESBG Login Test Bot** is built to find out *why a Telegram login code does not arrive*.
-It contains no other features, so the MTProto library can be swapped with a single line in
-`requirements.txt` and the results compared under identical conditions (same phone number, same API ID).
+Login Bot signs a Telegram account in and shows every step of the login in plain language. It is built around one idea: you should always know **what Telegram did with your login code** - whether it went to the Telegram app, an SMS, a phone call or an email - instead of staring at a silent phone.
 
-The bot offers **four login methods**, registers its command menu in Telegram's **Menu** button at every
-start, shows the active **library version** and **Python version** on `/start`, and writes every login step
-to the log together with the delivery type Telegram chose (app, SMS, call, ...).
+The bot offers four ways to sign in:
 
-Messages that contain secrets (API Hash, session string, password, code) are **deleted from the chat
-immediately**.
+1. **Phone + OTP** - the quickest way. Send your number, then the code Telegram gives you.
+2. **API ID / API Hash** - uses your own key from my.telegram.org. Lower ban risk, and the best choice when the code never arrives.
+3. **Generate Session** - the bot makes a session string for you after you log in once.
+4. **Paste Session** - you already have a session string: paste it and the bot only checks that it works, no code needed.
+
+Anything sensitive - the code, your password, your API Hash, a session string - is **deleted from the chat the moment you send it**. A rotating photo from the built-in gallery tops every screen, so no two replies look the same. The bot runs as a worker on **Railway** or as a web service on **Render** and needs no other infrastructure.
 
 ## Features
 
-- **Four login methods** - Phone + OTP, your own API ID / API Hash, Generate Session, Paste Session.
-- **Code keypad** - tap the digits, delete one, submit, or request a new code; typing the code also works.
-- **2-step password support** - the bot asks for the password only when Telegram requires it, and deletes the message at once.
-- **Secret hygiene** - every message that contains a code, password, API Hash or session string is deleted from the chat immediately.
-- **Delivery report** - each attempt logs how Telegram sent the code (`delivery=APP`, `SMS`, `CALL`, ...).
-- **Session strings** - generate one after a login, or verify an existing one without any code.
-- **Command menu** - `/start`, `/login`, `/generatesession`, `/pastesession`, `/help`, `/cancel` are registered in Telegram's Menu button at every start.
-- **Health page** - a tiny HTTP page on `$PORT` answers for Render / Railway uptime checks.
-- **Swappable library** - the MTProto library is a single line in `requirements.txt`.
+- **Four login methods** in one menu - phone OTP, your own API key, session generation, session verification.
+- **Live delivery line** - after the code is requested, the bot tells you where Telegram sent it (app, SMS, call, missed call, email) and which method comes next.
+- **Code keypad** - enter the code with buttons, delete a digit with ⌫, submit with ✅, or ask for a fresh code with 🔁.
+- **2-step verification support** - if your account has a password, the bot asks for it and deletes the message instantly.
+- **Session strings made and verified** - generate a string after one login, or paste an existing one and have it checked without a code.
+- **Rotating photos** - a fresh login / nature picture above every command and button reply, shuffled so nothing repeats too soon.
+- **Secrets never stay in the chat** - messages that contain secrets are deleted at once.
+- **Self-registering command menu** - the Telegram "Menu" button is filled automatically at every start.
+- **One-line library switching** - the whole MTProto stack is the single line in `requirements.txt`.
+- **Deployment friendly** - health page on `$PORT` for Render, worker start for Railway, clear logs for every step.
 
 ## How It Works
 
-The full flow for the 📱 Phone + OTP method (methods 🔑 and 🧬 share it; 📋 skips it completely):
-
-1. Send `/start` - the bot shows the main menu with all four methods and the active library.
-2. **Choose a method** - tap a button, or send `/generatesession` or `/pastesession` directly.
-3. **Phone** - send your number with the country code (e.g. `+919876543210`). The message is deleted at once.
-4. **Code** - Telegram decides how the code is delivered; the bot shows that on the code screen. Enter it with
-   the keypad, or type it in the chat (separate the digits with spaces). ⌫ deletes, ✅ submits, 🔁 requests a new code.
-5. **2-step password** - only if your account has 2-step verification. Send the password; the message is deleted at once.
-6. **Result** - a login check for methods 📱 and 🔑, a session string for 🧬, a verified/not-verified screen for 📋.
-
-Everything the bot does is written to the log, one line per step (see [Reading the Logs](#reading-the-logs)).
+1. Send **/start** - the bot opens the main menu with the four methods.
+2. Choose a method - each method has its own step-by-step screens.
+3. Send your phone number (and, for method 2, your API ID and API Hash first).
+4. Telegram sends the login code - the bot shows **where it was sent**.
+5. Enter the code on the keypad and press **✅ Submit** (or tap 🔁 for a new code).
+6. If your account has a 2-step password, send it - the message is deleted immediately.
+7. You get the result: a login confirmation, a session string, or a verified session.
 
 ```mermaid
 flowchart TD
-    S["/start"] --> M["Choose a login method: Phone + OTP, API ID / API Hash, Generate Session or Paste Session"]
-    M --> P["Send phone number with country code, e.g. +919876543210"]
-    P --> C["Enter the code: keypad or typed message"]
-    C --> T2-step password enabled?
-    T -- "Yes" --> W["Send the account password - message deleted at once"]
-    W --> R["Result: login check or session string"]
-    T -- "No" --> R
+    S["/start"] --> M{"Choose a login method"}
+    M -->|"📱 Phone + OTP"| P["Send phone number"]
+    M -->|"🔑 API ID / API Hash"| K["Send API ID + API Hash"]
+    M -->|"🧬 Generate Session"| P
+    M -->|"📋 Paste Session"| PS["Paste session string"]
+    K --> P
+    P --> C["Telegram sends the code"]
+    C --> E{"Code arrives?"}
+    E -->|"no"| R["Tap 🔁 New code, wait, or switch to API ID / Hash"]
+    E -->|"yes"| KP["Enter code on the keypad"]
+    KP --> T{"2-step verification?"}
+    T -->|"yes"| PW["Send account password"]
+    T -->|"no"| RES["Result: login check or session string"]
+    PW --> RES
+    PS --> V{"String valid?"}
+    V -->|"yes"| OK["✅ Session verified"]
+    V -->|"no"| PS
 ```
 
 ## Bot Preview
 
-The screens exactly as the bot sends them (HTML bold/italics rendered, sample data for the account name):
+Every reply is a **rotating photo with the text as its caption**; the buttons sit under the message. The screens below show the text exactly as the bot writes it.
 
-**The main menu on /start and /login**
+**/start - the main menu**
 
 ```text
-━━━ 🔐 CONNECT YOUR TELEGRAM ACCOUNT ━━━
+━━━ 🔐 LOGIN BOT ━━━
+
+Sign in to a Telegram account and see exactly how the login code is delivered.
 
 Choose how to log in:
 
 ▸ 📱 Phone + OTP
-Quickest: send your number, then the code Telegram gives you.
+The quickest way. Send your number, then the code Telegram gives you.
 
 ▸ 🔑 API ID / API Hash
 Uses your own key from my.telegram.org. Lower ban risk, and the best choice when the code never arrives.
 
 ▸ 🧬 Generate Session
-I log you in once and make a session string for you.
+Log in once and the bot makes a session string for you.
 
 ▸ 📋 Paste Session
 Already have a session string? Paste it and I only check that it works. No code needed.
 
-💡 /cancel to stop.
+💡 Tip: if the code never arrives, choose 🔑 API ID / API Hash.
 
-🔬 Diagnostics: pyrofork 2.3.69 · Python 3.12.6
-⚡ Powered by ESBG
+⚙️ Powered by ESBG
+
+[📱 Phone + OTP] [🔑 API ID / API Hash] [🧬 Generate Session]
+[📋 Paste Session] [❓ Help] [❌ Close]
 ```
-**Phone + OTP - the quickest way in**
 
-```text
-━━━ 📱 PHONE + OTP LOGIN ━━━
-
-▸ Your phone number
-Send it with the country code. Example: +919876543210
-
-💡 /cancel to stop.
-```
-**Your own API key - step 1 of 3**
-
-```text
-━━━ 🔑 YOUR OWN API KEY ━━━
-
-Get it free at my.telegram.org → API development tools. It is only used for this login and is not stored.
-
-▸ Step 1 of 3 - API ID
-Send your API ID (numbers).
-
-💡 /cancel to stop.
-```
-**Generate Session**
+**Method introductions**
 
 ```text
 ━━━ 🧬 GENERATE SESSION ━━━
@@ -157,10 +122,7 @@ I will log in once and give you a session string to paste back.
 Send it with the country code. Example: +919876543210
 
 💡 /cancel to stop.
-```
-**Paste Session - no code needed**
 
-```text
 ━━━ 📋 PASTE SESSION ━━━
 
 Paste a ready session string and I will check that it works.
@@ -172,134 +134,137 @@ Send the whole string as one message. I delete your message at once.
 A session string is the key to your account. Never share it.
 
 💡 /cancel to stop.
+
+━━━ 🔑 YOUR OWN API KEY ━━━
+
+Get it free at my.telegram.org → API development tools.
+It is only used for this login and is not stored.
+
+▸ Step 1 of 3 - API ID
+Send your API ID (numbers).
+
+💡 /cancel to stop.
 ```
-**The code screen, for APP delivery**
+
+**The code screen**
 
 ```text
-📲 The code was sent inside Telegram: open the chat named Telegram (blue tick) on a phone or computer where this account is already logged in. It is not an SMS.
+━━━ 🔢 ENTER THE CODE ━━━
 
-⚠️ Note: Telegram does not offer an alternative delivery method (SMS / call) for this request.
+📲 The code was sent inside Telegram: open the chat named Telegram (blue tick) on a
+phone or computer where this account is already logged in. It is not an SMS.
 
 🔢 Enter the code with the buttons below.
-Typing the code in the chat can make Telegram cancel it. If you type it, separate the digits with spaces.
+Typing the code in the chat can make Telegram cancel it. If you type it, put a space between the digits.
 
 Code: -
 
 Not arriving? Tap 🔁 below, wait a minute, or start /login again and choose 🔑 API ID / API Hash.
-```
-**2-step password, only when Telegram asks for it**
-
-```text
-━━━ 🔐 2-STEP PASSWORD ━━━
-
-Your account has 2-step verification.
-
-▸ Your password
-Send it as one message. I delete it at once.
 
 💡 /cancel to stop.
+
+[1] [2] [3]          [4] [5] [6]          [7] [8] [9]
+[⌫] [0] [✅ Submit]  [🔁 New code] [❌ Cancel]
 ```
-**Result of Generate Session**
+
+**Results**
 
 ```text
 ━━━ 🧬 SESSION GENERATED ━━━
 
-▸ Library
-pyrofork 2.3.69
+Account: Alice
+Library: pyrofork 2.3.69
 
-▸ Account
-John (@johndoe)
+Your session string
+Ab1zXk9...=
 
-▸ Session string
-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdEfGhIj
+▸ Keep it secret
+This string gives full access to your account. Save it somewhere safe and delete this message.
 
-⚠️ This string gives full access to your account. Keep it private and delete this message after saving it. You can verify it with 📋 Paste Session in /start.
+You can check it any time with 📋 Paste Session.
 
-💡 /start to begin again.
-```
-**Result of Paste Session**
-
-```text
 ━━━ ✅ SESSION VERIFIED ━━━
 
-The session string works.
+Library: pyrofork 2.3.69
+Account: Alice (@alice)
 
-▸ Library
-pyrofork 2.3.69
+The session works. No code was needed.
 
-▸ Account
-Stub (@stubuser)
-
-Your message with the string was deleted from this chat.
-
-💡 /start to begin again.
-```
-**Cancel at any time with /cancel**
-
-```text
-━━━ 🚫 CANCELLED ━━━
-
-The current action was stopped.
-
-💡 /start to begin again.
+▸ Keep it secret
+A session string is the key to your account. Never share it.
 ```
 
+## Photo Rotation
+
+Every command reply and every button reply shows a **new photo** on top of the message, with the screen text as the caption and the buttons underneath.
+
+**How the rotation works**
+
+- Every picture is shown once before any picture repeats (a "shuffle bag" per user), and the same picture is never shown twice in a row.
+- Login / security pictures and nature pictures are mixed, so they roughly alternate.
+- A new picture is picked for every command reply and every button reply - including 🔁 New code, ✅ Submit results and ❌ Cancel.
+- The exception: pressing a keypad digit or ⌫ only updates the text, so the picture does not flicker (this is the `ROTATE_ON_KEYPAD` switch in `main.py`).
+- Each picture is uploaded once and cached by its Telegram file id, so later screens are instant.
+
+**Accepted formats**
+
+| Always supported (no extra package) | Supported when Pillow is installed |
+|-------------------------------------|------------------------------------|
+| JPG, JPEG, JFIF, PNG, WebP          | GIF, BMP, TIFF and anything else Pillow can open |
+
+The format is detected from the file's first bytes, not from its name - a PNG named `.jpg` still works. Files that Pillow converts are re-encoded to JPEG once at start, and oversized pictures are downsized automatically. Corrupt, empty or hidden files are skipped with a warning instead of crashing the bot. If a picture fails to send, it is removed from the rotation for the rest of the run and the screen is sent anyway.
+
+> **Note:** to enable GIF / BMP / TIFF, add a second line with just `pillow` to `requirements.txt`. Pillow is an image library, not a Telegram library, so the one-library rule stays intact.
+
+**Using your own pictures**
+
+1. Drop your pictures into `assets/photos/login/` (login / security themed) or `assets/photos/nature/`.
+2. Any common format works; file names do not matter.
+3. Restart the bot - the gallery is read once at start. Removed files simply stop appearing.
+
+Set the environment variable `PHOTOS=off` to send every screen as plain text instead. If the folder is empty or a photo fails, the same screen is delivered as a normal text message with the same buttons - the login flow never depends on photos.
+
+The 24 pictures included with the bot are original artwork drawn for this project:
+
+<p align="center"><img src="assets/photos_preview.jpg" alt="Photo gallery preview" width="700px"/></p>
+
+> **Note:** a photo caption in Telegram is limited to 1,024 characters. Every screen is written to fit; the long /help guide is sent as a photo with a short caption plus the full guide as a second message.
 
 ## Login Methods
 
-All four methods are everywhere: in the menu, on the buttons, in `/help` and in this README - always in
-this order.
+<a id="method-1"></a>
 
 ### 1. Phone + OTP
 
-The quickest way in: the bot requests the code with **its own** API credentials (the `API_ID` / `API_HASH`
-environment variables).
+The quickest way in. You send your phone number with the country code, Telegram sends a one-time code, you enter it on the keypad. If your account has a 2-step password you send it afterwards. The result is a login confirmation and a session string you can save. This method uses the API ID / API Hash that the bot's owner configured.
 
-- Send your phone number with the country code, e.g. `+919876543210`.
-- Enter the code on the keypad (or type it in the chat, digits separated by spaces).
-- If your account has 2-step verification, send your password.
-- **You get:** a "LOGIN WORKED" screen - proof that this library can complete a login.
+<a id="method-2"></a>
 
 ### 2. API ID / API Hash
 
-Uses **your own** key from [my.telegram.org](https://my.telegram.org) instead of the bot's key.
+The same flow, but the login is created with **your own** API key from [my.telegram.org](https://my.telegram.org) (API development tools). You send the API ID (numbers), then the API Hash (32 characters), then your phone number and the code. Telegram treats the login as coming from your own application, which carries a lower ban risk - and this is the method to pick when the code never arrives with method 1. The key is only kept in memory for this login and is not stored.
 
-- Get it free at my.telegram.org → *API development tools*. It is only used for this login and is not stored.
-- Step 1 of 3: send your **API ID** (numbers).
-- Step 2 of 3: send your **API Hash** (32 characters) - the message is deleted at once.
-- Step 3 of 3: send your phone number, then the code as in method 1.
-- **You get:** a "LOGIN WORKED" screen with your own key.
-
-> **Note:** this method has a **lower ban risk** (the key is yours, not a shared one) and is the **best
-> choice when the code never arrives**.
+<a id="method-3"></a>
 
 ### 3. Generate Session
 
-Same flow as method 1, but the result is different.
+Available from the menu or with **/generatesession**. You log in once (phone number → code → optional 2-step password) and the bot replies with a ready session string. Save it somewhere safe - it grants full access to the account - and delete the message afterwards.
 
-- Send `/generatesession` (or tap 🧬 Generate Session), then your phone number, the code, and the password if asked.
-- **You get:** a **session string** - the key to your account in one line. Keep it private and delete the
-  message after saving it.
+<a id="method-4"></a>
 
 ### 4. Paste Session
 
-You already have a session string (for example generated here earlier, or by another tool) and just want to
-know whether it still works. **No code is needed.**
+Available from the menu or with **/pastesession**. You already have a session string and just want to know whether it still works:
 
-- Send `/pastesession` (or tap 📋 Paste Session).
-- Send the whole string as one message - the bot deletes your message at once.
-- The bot starts the session in memory, asks Telegram who it belongs to, and closes it again.
-- **You get:** a "SESSION VERIFIED" screen with the library and the account name / username, or an
-  "INVALID SESSION" screen with the reason.
-- Limits: 5 tries per session, bot sessions are rejected, the string is never stored.
+1. Paste the whole string as one message.
+2. The bot deletes your message at once and starts a temporary client with the string.
+3. If the session opens and belongs to a user account, you get a **SESSION VERIFIED** screen with the account name; otherwise you get an **INVALID SESSION** screen with the reason.
 
-> **Warning:** a session string is the key to your account. Never share it, and never paste it anywhere
-> except this private chat.
+No code and no password are needed. After five failed attempts the bot stops for that round. A session string is the key to the account - never paste one you do not own, and never share one that is yours.
 
 ## Bot Commands
 
-The bot registers these commands in Telegram's **Menu** button (next to the message box) at every start -
-no setup in @BotFather is needed. If the registration fails, it is only logged and the bot starts anyway.
+The bot fills Telegram's **Menu** button by itself at every start - nothing to set up in @BotFather.
 
 | Command | Description |
 |---------|-------------|
@@ -310,193 +275,129 @@ no setup in @BotFather is needed. If the registration fails, it is only logged a
 | `/help` | How the bot works and guidelines |
 | `/cancel` | Cancel the current action |
 
-`/start` and `/login` show the same menu. `/generatesession` and `/pastesession` do exactly what the
-matching menu buttons do - same state, same screens, same flow. `/help` works in any state and never
-interrupts a running login.
+`/help` works in the middle of a login too and never breaks the flow.
 
 ## Quick Start
 
-**Prerequisites:** Python 3.12 or newer, a Telegram account of your own, API credentials from
-my.telegram.org, and a host (Railway, Render, or any machine that can run Python).
-
-1. **Create a test bot** with [@BotFather](https://t.me/BotFather):
-   - send `/newbot`, pick a name and a username;
-   - copy the **token** - that is `BOT_TOKEN`;
-   - this token is for testing only: **revoke it** (`/revoke` in @BotFather) when testing is finished.
-2. **Get your API credentials** at [my.telegram.org](https://my.telegram.org):
-   - log in with your phone number, confirm in Telegram;
-   - open *API development tools*;
-   - copy the **App api_id** (numbers) and the **App api_hash** (32 characters).
-3. **Deploy** the project and set `BOT_TOKEN`, `API_ID`, `API_HASH` (see [Deployment](#deployment)).
-4. **Test it**: open your bot in Telegram, send `/start`, tap 📱 Phone + OTP, send your number with the
-   country code, then enter the code. Try one method at a time.
-5. **Read the result**: a success screen tells you the login worked (or gives you the session string);
-   an error screen names the reason. What the bot *did* is in the logs (see [Reading the Logs](#reading-the-logs)).
-6. **If something fails**: read the error screen and the matching row in
-   [Troubleshooting](#troubleshooting), then retry with the suggested fix. Nothing worked? Switch the
-   library (see [Choosing the Library](#choosing-the-library)) and test again under the same conditions.
+1. **Create a bot** with [@BotFather](https://t.me/BotFather): send `/newbot`, pick a name and a username, and copy the token.
+2. **Get API credentials** at [my.telegram.org](https://my.telegram.org) → *API development tools* → note the **API ID** and **API Hash**.
+3. **Deploy** the project on Railway or Render (see [Deployment](#deployment)) and set the environment variables.
+4. Open your bot in Telegram, send **/start**, choose a method and follow the screens.
+5. When you are done testing, revoke the bot token in @BotFather (`/revoke`).
 
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|:--------:|-------------|
-| `BOT_TOKEN` | Yes | Token of the test bot from @BotFather |
+| `BOT_TOKEN` | Yes | Token of your bot from @BotFather |
 | `API_ID` | Yes | Numeric API ID from my.telegram.org |
 | `API_HASH` | Yes | API Hash from my.telegram.org |
 | `PORT` | No | Set automatically by Render / Railway; a tiny health page answers on it |
-
-> **Note:** the bot exits at start with a clear message if one of the required variables is missing.
+| `PHOTOS` | No | `on` (default) or `off` - turns the rotating photos off |
 
 ## Deployment
 
 ### Railway
 
-1. **New Project** → **Deploy from GitHub repo** → select this repository.
+1. Push the project to GitHub, then in Railway: **New Project** → **Deploy from GitHub repo** → select the repository.
 2. Open **Variables** and add `BOT_TOKEN`, `API_ID`, `API_HASH`.
-3. The start command is `python main.py` (provided by the included `Procfile`), no other settings needed.
-4. Python 3.12 or newer works (the Railway default is fine).
-5. Deploy, then open the bot in Telegram and send `/start`.
+3. Deploy. The included `Procfile` starts the bot with `worker: python main.py` - no port needed.
+4. Check the deploy logs: the bot prints its library version and the registered commands.
 
 ### Render
 
-1. **New** → **Web Service** → select this repository. Settings are read from `render.yaml`
-   (runtime Python, health check path `/`).
+1. In Render: **New** → **Web Service** → connect the repository. The included `render.yaml` provides the settings.
 2. Add `BOT_TOKEN`, `API_ID`, `API_HASH` under **Environment**.
-3. Deploy. After changing the library, use **Clear build cache & deploy** so the new package is really installed.
-
-Both platforms work unchanged: the `Procfile` serves Railway (worker, no port) and `render.yaml` serves
-Render (web service with a health page on `$PORT`).
+3. Deploy. Render sets `PORT` automatically; the bot answers on it with a tiny health page, so the service shows as alive.
+4. If you change the library later, use **Clear build cache & deploy**.
 
 ## Choosing the Library
 
-The active library is the **single line** in `requirements.txt`. Test them one after another, with the same
-phone number and the same API ID:
+The MTProto library is the **single line** in `requirements.txt`. Ready-made alternatives ship with the project; copy the line you want and redeploy.
 
 | Library | Line in `requirements.txt` | Notes |
 |---------|----------------------------|-------|
 | **Pyrofork** (default) | `pyrofork==2.3.69` | Newest release on PyPI, known to work |
-| Pyrogram | `pyrogram==2.0.106` | Old, code did not arrive |
-| Kurigram | `kurigram==2.2.26` | Code did not arrive |
+| Pyrogram | `pyrogram==2.0.106` | Old, code may not arrive |
+| Kurigram | `kurigram==2.2.26` | Alternative fork |
 
-Ready-made copies sit next to `requirements.txt` (`requirements_pyrofork_2.3.69.txt`,
-`requirements_pyrogram_2.0.106.txt`, `requirements_kurigram_2.2.26.txt`).
+> **Warning:** never install two Telegram libraries together - their modules collide and the bot crashes at start. Exactly one library line, always.
 
-To switch: replace the content of `requirements.txt` with the line you want (or copy one of the
-`requirements_*.txt` files over it) and redeploy - on Render use **Clear build cache & deploy**.
-
-> **Warning:** never install two of these libraries together. They provide the same `pyrogram` package and
-> break each other's installation.
+> **Warning:** do not "upgrade" to `pyrofork==2.4.0` - that version does not exist on PyPI and the deployment fails with `No matching distribution found for pyrofork==2.4.0`.
 
 ## Reading the Logs
 
-After requesting a code, the log contains a line like:
+After each code request the log contains a line like this:
 
 ```text
-login: code requested ... delivery=APP next=SMS
+login: code requested uid=... library=pyrofork 2.3.69 key=bot mode=login delivery=APP next=SMS timeout=120
 ```
 
 | Field | Meaning |
 |-------|---------|
-| `delivery` | How Telegram sent the code: `APP`, `SMS`, `CALL`, `FLASH_CALL`, `EMAIL_CODE`, ... |
-| `next` | The next method Telegram offers if the code does not arrive (empty = no alternative) |
+| `delivery` | Where Telegram sent the code: `APP` (inside the Telegram app), `SMS`, `CALL`, `FLASH_CALL`, `MISSED_CALL`, `EMAIL_CODE`, `FRAGMENT_SMS` |
+| `next` | The alternative method Telegram offers if the code does not arrive |
+| `key` | Whose API credentials the login used: `bot` or `own` |
+| `mode` | `login` (account check) or `generate` (session string) |
 
-Other useful lines: `login: asking Telegram for a code ... key=bot|own mode=login|generate`,
-`login: resend ...`, `login: SUCCESS ...`, `login: SESSION PASTE OK ...`.
-
-When reporting a problem, include this line **for each library tested** and whether the code actually
-arrived.
+`APP` delivery is the most common reason for "no code": the code is **not** an SMS. Open the chat named **Telegram** (blue tick) on a device where that account is already logged in.
 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `No matching distribution found for pyrofork==2.4.0` | That version does not exist on PyPI | Keep the default `pyrofork==2.3.69` in `requirements.txt` |
-| Code does not arrive | `delivery=APP` means the code is inside Telegram, not an SMS | Open the chat named **Telegram** (blue tick) in the app; tap 🔁 New code and wait a minute; if `next=` is empty there is no alternative - switch to method 🔑 API ID / API Hash |
-| `ApiIdInvalid` | The API ID / API Hash pair is wrong | Re-check both values at my.telegram.org, then send the phone number again |
-| `ApiIdPublishedFlood` | The API ID is blocked for new logins | Create your own key at my.telegram.org and use method 🔑 API ID / API Hash |
-| `FloodWait` | Too many attempts in a short time | Wait the number of seconds shown in the message, then retry |
-| `INVALID SESSION` when pasting | The string is incomplete, altered, not a Pyrogram-format session string, or it is a bot session | Paste the whole string as one message; make sure it is the session string of a **user** account |
-| Crash at start | `BOT_TOKEN`, `API_ID` or `API_HASH` missing or invalid | Set all three variables and restart; send the first error line from the log if it still crashes |
+| Build fails: `No matching distribution found for pyrofork==2.4.0` | That version does not exist on PyPI | Keep `pyrofork==2.3.69` |
+| `ApiIdInvalid` when requesting the code | API ID / API Hash is wrong | Re-check both values at my.telegram.org, or use the bot's own key (method 1) |
+| `ApiIdPublishedFlood` | The API ID is publicly flooded and blocked by Telegram | Create your own API key and use method 2 |
+| `FloodWait` / "Too many attempts" | Too many code requests | Wait the number of seconds shown, then try again |
+| Code never arrives | `delivery=APP`: the code is inside the Telegram app, not an SMS | Open the chat named **Telegram** (blue tick) on a logged-in device; tap 🔁 New code; or restart with method 2 |
+| `INVALID SESSION` after pasting a string | The string is truncated, mistyped, expired, or from a bot account | Copy the whole string again in one message; bot sessions are rejected |
+| Photos not showing | `PHOTOS=off`, empty folder, or Telegram rejected a file | Check the `photos:` log lines; the bot falls back to text screens automatically |
+| Crash at start | Missing environment variable or two Telegram libraries installed | Set `BOT_TOKEN`, `API_ID`, `API_HASH`; keep exactly one library line in `requirements.txt` |
 
 ## FAQ
 
-**Does the bot store my phone number, code, password or session string?**
-No. Everything lives in memory for the duration of one login, and restarts wipe it. Messages that contain
-secrets are deleted from the chat immediately.
+**Where is my login code?**
+Check the delivery line on the code screen. If it says the code went to the app, look for the chat named **Telegram** (blue tick) on a phone or computer where that account is already signed in. It is not an SMS.
 
-**Where do I get a session string?**
-From the 🧬 Generate Session method: log in once, and the bot hands you the string. Or bring one from
-another tool and check it with 📋 Paste Session.
+**Why did my code get cancelled?**
+Typing the code as a normal chat message can make Telegram cancel it. Use the keypad buttons, or type the digits separated by spaces.
 
-**Why does the code arrive in the Telegram app and not as an SMS?**
-Telegram decides per request. `APP` is the most common delivery when the account is already logged in
-somewhere. The code screen tells you exactly where to look, and the log line shows `delivery=`.
+**Does the bot store my password or my API Hash?**
+No. The message is deleted from the chat immediately and nothing is written to disk. The API Hash only lives in memory for that one login.
 
-**Why does the bot need my 2-step password?**
-Only if your account has 2-step verification enabled - Telegram requires it to finish the login. The
-message with the password is deleted immediately, and nothing is stored.
+**What is a session string?**
+A text key that lets a program open your Telegram account without a new login code. It is as powerful as your password - keep it private, and only paste strings that belong to you.
 
-**Which method should I try first?**
-📱 Phone + OTP. If the code never arrives, 🔑 API ID / API Hash is the best alternative - it also has a
-lower ban risk because the key is your own.
+**Can I log in to someone else's account?**
+No. Use the bot only with your own accounts.
 
-**Can I test with a friend's number?**
-No. Use your own accounts only (see [Security Guidelines](#security-guidelines)).
+**Can I use my own pictures?**
+Yes - drop them into the photo folders and restart. Any common format works; see [Photo Rotation](#photo-rotation).
 
-**Can the bot run without `API_ID` / `API_HASH`?**
-No. All three variables (`BOT_TOKEN`, `API_ID`, `API_HASH`) are required, even if you only use method 🔑.
+**Railway or Render?**
+Both work out of the box. Railway runs the bot as a worker; Render runs it as a web service and uses the health page on `$PORT`.
 
-**What is the difference between 📱 Phone + OTP and 🧬 Generate Session?**
-The login flow is identical. Method 📱 ends with a "LOGIN WORKED" check, method 🧬 ends with a session
-string you can keep.
+**Why does /help not reset my login?**
+/help is only a guide - it never touches an ongoing login, so you can read it mid-flow.
 
 ## Security Guidelines
 
-Do:
-
-- use **your own accounts and your own API key**;
-- use a **separate test bot** and revoke its token (`/revoke` in @BotFather) when testing is finished;
-- delete the message that shows your session string after saving it;
-- keep `BOT_TOKEN`, `API_ID`, `API_HASH` in the platform's environment settings, never in the repository.
-
-Never:
-
-- **never share a session string** - it is the key to the whole account, anyone who has it can read and
-  write every chat;
-- never paste a session string into a group, a website, or another bot;
-- never use accounts or numbers that are not yours;
-- never commit `BOT_TOKEN`, `API_HASH` or session strings to Git;
-- never run the bot for other people - it is a diagnostic tool, not a service.
-
-## Project Structure
-
-```text
-login_test_bot/
-├── assets/
-│   └── banner.svg                  # animated README banner (SVG SMIL, no JavaScript)
-├── main.py                         # the bot (login flows, commands, health page)
-├── requirements.txt                # active library (one line: pyrofork==2.3.69)
-├── requirements_pyrofork_2.3.69.txt
-├── requirements_pyrofork_latest.txt
-├── requirements_pyrogram_2.0.106.txt
-├── requirements_kurigram_2.2.26.txt
-├── Procfile                        # Railway / Heroku-style start command
-├── render.yaml                     # Render service definition
-└── README.md
-```
+- A **session string is the key to the account.** Never share it, never post it in a chat, and delete any message that shows it after saving it.
+- **Revoke the bot token** when testing is over: @BotFather → `/mybots` → the bot → API Token → Revoke.
+- **Use only your own accounts.** Logging in to accounts you do not own is not what this bot is for.
+- Never commit `BOT_TOKEN`, `API_HASH` or session strings to the repository - set them as environment variables in the dashboard.
+- The bot deletes every message that contains a secret (code, password, API Hash, session string) the moment it arrives.
 
 ## Credits
 
-- **Built by ESBG.**
-- [Pyrofork](https://github.com/pyrofork/pyrofork) - the maintained Pyrogram fork this project ships with,
-  and the whole Pyrogram ecosystem it belongs to.
-- [Telegram Bot API](https://core.telegram.org/bots/api) and
-  [my.telegram.org](https://my.telegram.org) - the credentials every login is based on.
-- [Railway](https://railway.app) and [Render](https://render.com) - the one-click hosts this bot is
-  configured for.
-
----
-
 <div align="center">
-<sub><b>Made by ESBG</b> - a login diagnostic tool. Use it only with your own accounts, and keep every session string to yourself.</sub>
+
+**Made by ESBG**
+
+Built for Telegram account login checks and session work.
+The included photos and the animated banner are original artwork created for this project.
+
+*Use only with your own accounts. The authors are not responsible for misuse.*
+
 </div>
