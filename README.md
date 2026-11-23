@@ -15,7 +15,7 @@
 
 [Overview](#overview) · [Features](#features) · [How It Works](#how-it-works) · [Bot Preview](#bot-preview) · [Photo Rotation](#photo-rotation) · [Login Methods](#login-methods) · [Bot Commands](#bot-commands)
 
-[Quick Start](#quick-start) · [Environment Variables](#environment-variables) · [Deployment](#deployment) · [Choosing the Library](#choosing-the-library) · [Reading the Logs](#reading-the-logs) · [Troubleshooting](#troubleshooting) · [FAQ](#faq) · [Security Guidelines](#security-guidelines) · [Credits](#credits)
+[Quick Start](#quick-start) · [Environment Variables](#environment-variables) · [Deployment](#deployment) · [Choosing the Library](#choosing-the-library) · [Reading the Logs](#reading-the-logs) · [Troubleshooting](#troubleshooting) · [FAQ](#faq) · [Tests](#tests) · [Security Guidelines](#security-guidelines) · [Credits](#credits)
 
 </div>
 
@@ -380,6 +380,15 @@ Both work out of the box. Railway runs the bot as a worker; Render runs it as a 
 
 **Why does /help not reset my login?**
 /help is only a guide - it never touches an ongoing login, so you can read it mid-flow.
+
+## Tests
+
+Two test files drive the real handler code with fake Telegram clients - no network and no Telegram credentials are needed (install `requirements.txt` first, the tests import `main`).
+
+```bash
+python tests/test_media.py      # 41 checks: photo store, rotation, captions, fallback, restart state
+python tests/test_handlers.py   # 61 checks: every command, button, callback, flow and validation error
+```
 
 ## Security Guidelines
 
